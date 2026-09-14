@@ -39,9 +39,11 @@ Caveats (also reflected in the module-level constants):
   inferential value, so all downstream associations are methodological
   exercises, not clinical findings.
 - **Sparse visit typing.** ~85% of visit rows have ``visit_concept_id = 0``
-  (unmapped), and this export contains no ER (9203) rows; the typed counts
-  undercount true typed utilization, while ``total_visits`` (all rows) and
-  the zero-visit share are the robust utilization signals.
+  (unmapped; typed rows are only ~15% of the table), and this export
+  contains no ER (9203) rows. The typed counts (inpatient + outpatient +
+  er) therefore capture only ~15% of a member's full visit activity, while
+  ``total_visits`` (all rows) and the zero-visit share are the robust
+  utilization signals.
 - **Claim-line duplication.** DE-SynPUF repeats diagnoses across claim
   lines (~160 condition rows/member at 1k, ~127 at 100k), which inflates
   row-level prevalence; the member-level ANY-match flags are immune to
@@ -49,8 +51,22 @@ Caveats (also reflected in the module-level constants):
   should be read as utilization-flavored signals, not clinical truth.
 - **Demographics encoding.** ``race``/``ethnicity`` carry the raw
   DE-SynPUF source codes (1=White, 2=Black, 3=Other, 4=Asian,
-  5=Hispanic, 6=North American Native; ethnicity 1=non-Hispanic,
-  2=Hispanic) — there is no vocabulary table to resolve them further.
+  5=Hispanic, 6=North American Native); there is no vocabulary table to
+  resolve them further. In this export ``ethnicity`` is byte-for-byte
+  identical to ``race`` for every member, so it is redundant — consider
+  dropping it for modeling (kept in the CSV for artifact stability).
+- **State encoding.** ``state`` mixes USPS abbreviations with one raw
+  numeric code ("54", 1,456 members) that maps to no state in the
+  location table.
+
+Modeling contract (for the later modeling phase):
+- ``person_id`` is the row key, not a feature — exclude it before fitting.
+- ``er_visits`` is zero-variance in this export (no 9203 rows) — drop it
+  before fitting.
+- ``gender``, ``age_band``, ``race``, ``ethnicity``, and ``state`` are
+  nominal — one-hot encode them; ``age_band`` is ordered but its labels
+  should not be treated as ordinal distances.
+- All count/flag columns are numeric and usable as-is.
 - **Observation months** are summed over ``observation_period`` rows as
   rounded calendar months; members without a period get 0.
 
@@ -205,28 +221,24 @@ def _observation_months(sample: str) -> pd.Series:
     return months.groupby(period["person_id"]).sum().rename("observation_months")
 
 
-def _chronic_flags(sample: str) -> pd.DataFrame:
-    cond = _read_table(sample, "condition_occurrence")
+def _condition_features(cond: pd.DataFrame) -> pd.DataFrame:
+    """Chronic flags + distinct-condition count from one condition read."""
     prefix = icd9_prefixes(cond["condition_source_value"])
-    flags = pd.DataFrame(index=cond["person_id"].unique())
+    feats = pd.DataFrame({
+        "distinct_conditions": cond.groupby("person_id")["condition_source_value"].nunique()
+    })
     for name, (lo, hi) in CHRONIC_CONDITIONS.items():
-        hit = prefix.between(lo, hi)
-        flags[name] = hit.groupby(cond["person_id"]).any().astype("int64")
-    return flags
+        hits = prefix.between(lo, hi)
+        feats[name] = hits.groupby(cond["person_id"]).any().astype("int64")
+    return feats
 
 
-def _interaction_breadth(sample: str) -> pd.DataFrame:
-    cond = _read_table(sample, "condition_occurrence")
-    distinct_conditions = (
-        cond.groupby("person_id")["condition_source_value"].nunique()
-        .rename("distinct_conditions")
-    )
+def _interaction_breadth(sample: str) -> pd.Series:
     proc = _read_table(sample, "procedure_occurrence")
-    distinct_procedures = (
+    return (
         proc.groupby("person_id")["procedure_source_value"].nunique()
         .rename("distinct_procedures")
     )
-    return pd.concat([distinct_conditions, distinct_procedures], axis=1)
 
 
 def _pharmacy(sample: str) -> pd.DataFrame:
@@ -246,9 +258,12 @@ def build_member_features(sample: str) -> pd.DataFrame:
     Returns one row per person in the person table, every column populated
     (0 for counts/flags where the member has no such records).
     """
+    if sample not in SAMPLES:
+        raise ValueError(f"Unknown sample {sample!r}; expected one of {sorted(SAMPLES)}")
     features = _demographics(sample)
+    cond = _read_table(sample, "condition_occurrence")
     features = features.join(
-        [_utilization(sample), _observation_months(sample), _chronic_flags(sample),
+        [_utilization(sample), _observation_months(sample), _condition_features(cond),
          _pharmacy(sample), _interaction_breadth(sample)]
     )
     features = features.fillna({c: 0 for c in _ZERO_FILL_COLUMNS})
@@ -259,7 +274,6 @@ def build_member_features(sample: str) -> pd.DataFrame:
 
 
 def _prevalence_report(features: pd.DataFrame) -> pd.Series:
-    flags = list(CHRONIC_CONDITIONS) + ["any_chronic"]
     any_chronic = features[list(CHRONIC_CONDITIONS)].any(axis=1)
     return pd.Series(
         {**{f: features[f].mean() for f in CHRONIC_CONDITIONS},
