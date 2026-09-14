@@ -7,6 +7,9 @@ Usage:
     report = validate_dataset(tables, "1k")
     assert report["passed"].all()
 
+Notebooks/scripts outside src/ should add src/ to sys.path first, e.g.:
+    sys.path.insert(0, str(Path.cwd().parent / "src"))   # run from project root/notebooks
+
 The loader returns a dict mapping table name -> DataFrame with lowercase
 column names, so downstream code works uniformly across both samples.
 
@@ -61,6 +64,7 @@ EXPECTED_ROWS = {
     "100k": {
         "person": (90_000, 110_000),
         "visit_occurrence": (4_000_000, 5_500_000),
+        "condition_occurrence": (12_000_000, 13_500_000),
     },
 }
 
@@ -76,11 +80,20 @@ def _table_name(path: Path, prefix: str) -> str:
 def _data_files(sample: str) -> list[Path]:
     cfg = SAMPLES[sample]
     directory = DATA_DIR / cfg["dir"]
+    if not directory.is_dir():
+        raise FileNotFoundError(
+            f"Sample directory not found: {directory} "
+            f"(did you download the {sample} dataset?)"
+        )
     files = [
         p
         for p in sorted(directory.glob(cfg["glob"]))
         if not _VERSIONED_FILE.search(p.name)
     ]
+    if not files:
+        raise FileNotFoundError(
+            f"No {sample} data files matching {cfg['glob']!r} under {directory}"
+        )
     return files
 
 
