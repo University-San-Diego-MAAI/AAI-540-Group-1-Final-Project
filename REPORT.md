@@ -41,7 +41,7 @@ The export follows the **OMOP Common Data Model v5.x**: each person's records ar
 
 ## 3. Headline EDA findings (notebook 01)
 
-- **Population.** Elderly Medicare-like cohort: mean age ~72 at the start of the 2008–2010 window, balanced gender (100k: 55.6% female / 44.4% male), 82.8% White. Observation coverage is nearly uniform (~36 months) with a short-tail minority entering late or exiting early.
+- **Population.** Elderly Medicare-like cohort: mean age ~72 at the start of the 2008–2010 window, balanced gender (100k: 55.6% female / 44.4% male), 82.8% White. Observation coverage is not fully universal: 10,679 members (10.7%) have **no observation period at all** (zero observation months), and 99.6% of those have zero visits — a not-observed group rather than a short-tail minority. The remaining ~89% are mostly observed for the full ~36-month window.
 - **Utilization is count-heavy, right-skewed, and polarized.** ~47–48 visit rows/member (median 41) with a long high-utilization tail and ~15% of members with **zero** visit rows; condition (~127 rows/member at 100k), drug (~54 exposures), and procedure (~119) layers show the same skew. This polarization maps directly onto the RFC's Low/Medium/High tiers.
 - **Visit typing is sparse.** ~85% of visit rows carry `visit_concept_id = 0` (unmapped); among typed rows outpatient dwarfs inpatient, and this export contains **zero ER (9203) rows**. Typed counts therefore capture only ~15% of a member's visit activity — *all-row counts* are the robust signal.
 - **Chronic disease dominates the diagnosis layer.** Top ICD-9 codes are the classic elderly cluster (hypertension 4019/4011, diabetes 25000, hyperlipidemia 2724, atrial fibrillation 42731, ischemic heart disease 41401). Member-level prevalence of the RFC chronic families is high (diabetes ~70%, cancer ~51%, CHF/COPD/stroke/renal ~45–48% each; ~77% carry at least one). **Claim-line duplication caveat:** DE-SynPUF repeats diagnoses across claim lines, inflating row-level prevalence; member-level ANY-match flags are immune to duplication but remain utilization-flavored signals, not clinical truth.
@@ -65,8 +65,8 @@ The export follows the **OMOP Common Data Model v5.x**: each person's records ar
 | `age` | int | Age at start of the 2008 observation window (`2008 − year_of_birth`) |
 | `age_band` | str | `age` binned: `<65`, `65-74`, `75-84`, `85+` (ordered labels, not ordinal distances — one-hot) |
 | `gender` | str | `Male`/`Female` from `gender_concept_id` 8507/8532 |
-| `race` | str | Raw DE-SynPUF code (1=White, 2=Black, 3=Other, 4=Asian, 5=Hispanic, 6=Native American); 4/6 never occur in this export; no vocabulary table to resolve further |
-| `ethnicity` | str | Raw code — **byte-identical to `race` for every member in this export**; redundant, consider dropping |
+| `race` | int (code) | Raw DE-SynPUF code (1=White, 2=Black, 3=Other, 4=Asian, 5=Hispanic, 6=Native American); 4/6 never occur in this export; no vocabulary table to resolve further — one-hot as a category, never treat as numeric/ordinal |
+| `ethnicity` | int (code) | Raw code — **byte-identical to `race` for every member in this export**; redundant, consider dropping; same one-hot / not-ordinal warning as `race` |
 | `state` | str | USPS abbreviation from the location table; includes raw code `"54"` (1,456 members) that maps to no state; `"Missing"` if no location |
 
 **Utilization** (OMOP `visit_occurrence`)
@@ -117,6 +117,7 @@ The RFC assumes claims-style features; the OMOP conversion supports most, but no
 3. **Sparse/zero visit typing.** ~85% of visit rows are untyped and there are no ER rows, so `er_visits` is zero-variance and typed visit counts undercount activity; `total_visits` is the dependable feature.
 4. **Demographic encoding quirks.** `ethnicity` duplicates `race` exactly; `race` uses raw numeric codes (no vocabulary); `state` mixes USPS codes with an unresolvable `"54"` code (1,456 members) and a `Missing` bucket.
 5. **Synthetic data.** All findings are methodological exercises on synthetic records with limited inferential value.
+6. **Exposure-time confounding.** Count features scale with observation time: `observation_months` correlates r = 0.47 with `total_visits`, and the zero-visit tail largely coincides with members lacking an observation period (10.7% of members; 99.6% of them have zero visits). Build rate features (counts per observation month) or include `observation_months` as a control — otherwise "low counts" partly means "not observed," not "low risk."
 
 ## 6. Reproducibility
 

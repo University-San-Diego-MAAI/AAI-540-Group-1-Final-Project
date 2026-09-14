@@ -69,6 +69,11 @@ Modeling contract (for the later modeling phase):
 - All count/flag columns are numeric and usable as-is.
 - **Observation months** are summed over ``observation_period`` rows as
   rounded calendar months; members without a period get 0.
+- **Exposure-time confounding:** count features scale with observation time
+  (``observation_months`` correlates ~0.47 with ``total_visits``, and
+  members with no observation period get all-zero counts) — use rate
+  features (per observation month) or include ``observation_months`` as a
+  control.
 
 Memory: big tables are read with ``pd.read_csv(..., usecols=[...])`` one
 table at a time (never all 18 tables at once), which keeps the 100k build
