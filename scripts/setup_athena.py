@@ -14,17 +14,16 @@ chronic-flag prevalence (CHF should climb steeply with class, as in the EDA).
 Run from the repo root:  .venv/bin/python scripts/setup_athena.py
 """
 
-import os
 import sys
 import time
 from pathlib import Path
 
-from dotenv import load_dotenv
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
 
 import boto3
 
-ROOT = Path(__file__).resolve().parent.parent
-load_dotenv(ROOT / ".env")
+from aws_common import check_credentials, ensure_default_bucket, region
 
 WORKGROUP = "aai540_g1"
 DATABASE = "aai540_g1"
@@ -76,12 +75,9 @@ def _run(athena, sql: str) -> str:
 
 
 def main() -> int:
-    if not os.getenv("AWS_ACCESS_KEY_ID"):
-        sys.exit("FAIL: .env credentials missing — run scripts/check_aws_env.py first.")
-    region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-    account = boto3.client("sts", region_name=region).get_caller_identity()["Account"]
-    bucket = f"sagemaker-{region}-{account}"
-    athena = boto3.client("athena", region_name=region)
+    check_credentials()
+    bucket = ensure_default_bucket()
+    athena = boto3.client("athena", region_name=region())
 
     # workgroup (tolerate AlreadyExists)
     try:

@@ -9,16 +9,15 @@ Uploads ``data/processed/training_table.csv`` (+ the 1k smoke table) to
 Run from the repo root:  .venv/bin/python scripts/upload_processed.py
 """
 
-import os
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
 
 import boto3
 
-ROOT = Path(__file__).resolve().parent.parent
-load_dotenv(ROOT / ".env")
+from aws_common import check_credentials, ensure_default_bucket, region
 
 PROCESSED_DIR = ROOT / "data" / "processed"
 DEST_PREFIX = "aai-540-g1/processed/training/"
@@ -26,13 +25,9 @@ FILES = ["training_table.csv", "training_table_1k.csv"]
 
 
 def main() -> int:
-    if not os.getenv("AWS_ACCESS_KEY_ID"):
-        sys.exit("FAIL: .env credentials missing — run scripts/check_aws_env.py first.")
-    region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-    sts = boto3.client("sts", region_name=region)
-    account = sts.get_caller_identity()["Account"]
-    bucket = f"sagemaker-{region}-{account}"
-    s3 = boto3.client("s3", region_name=region)
+    check_credentials()
+    bucket = ensure_default_bucket()
+    s3 = boto3.client("s3", region_name=region())
 
     errors = []
     # --- bucket hygiene ---

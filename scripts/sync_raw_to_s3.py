@@ -16,12 +16,13 @@ import os
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT / "src"))
 
 import boto3
 
-ROOT = Path(__file__).resolve().parent.parent
-load_dotenv(ROOT / ".env")
+from aws_common import check_credentials, ensure_default_bucket, region
 
 SOURCE_BUCKET = "synpuf-omop"
 SOURCE_PREFIX = "cmsdesynpuf100k/"
@@ -29,17 +30,10 @@ DEST_PREFIX = "aai-540-g1/raw/synpuf100k/"
 EXPECTED_TABLES = 17
 
 
-def _default_bucket(s3, region: str) -> str:
-    account = boto3.client("sts", region_name=region).get_caller_identity()["Account"]
-    return f"sagemaker-{region}-{account}"
-
-
 def main() -> int:
-    if not os.getenv("AWS_ACCESS_KEY_ID"):
-        sys.exit("FAIL: .env credentials missing — run scripts/check_aws_env.py first.")
-    region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-    s3 = boto3.client("s3", region_name=region)
-    dest_bucket = _default_bucket(s3, region)
+    check_credentials()
+    s3 = boto3.client("s3", region_name=region())
+    dest_bucket = ensure_default_bucket(s3)
     print(f"mirroring {SOURCE_BUCKET}/{SOURCE_PREFIX} -> {dest_bucket}/{DEST_PREFIX}")
 
     paginator = s3.get_paginator("list_objects_v2")
