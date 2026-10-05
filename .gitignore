@@ -15,14 +15,11 @@ __pycache__/
 # file-size limits — never commit them.
 data/raw/
 
-# --- Everything that is not notebooks/ or data/ ---
-/src/
-/scripts/
+# --- Modeling phase: code is published (needed for CI/CD + grading) ---
+# Keep deliverables, archive, reports, and AGENTS.md local.
 /assets/
 /archive/
-/README.md
 /REPORT.md
-/requirements.txt
 /AGENTS.md
 *.docx
 *.pdf
