@@ -26,3 +26,6 @@ data/raw/
 /AGENTS.md
 *.docx
 *.pdf
+
+# keep placeholder files local once folders have content
+.gitkeep
