@@ -24,5 +24,8 @@ data/raw/
 *.docx
 *.pdf
 
+# --- Credentials & secrets (never commit) ---
+.env
+
 # keep placeholder files local once folders have content
 .gitkeep
