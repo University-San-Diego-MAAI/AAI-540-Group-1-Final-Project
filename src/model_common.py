@@ -19,6 +19,7 @@ Expects ``src/`` on sys.path (same pattern as the other src modules).
 """
 
 from pathlib import Path
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -51,13 +52,13 @@ COUNT_FEATURES = [
 DROP_COLUMNS = ["label_rule_version", "er_visits", "ethnicity"]
 
 
-def load_table(path: str | Path) -> pd.DataFrame:
+def load_table(path: Union[str, Path]) -> pd.DataFrame:
     df = pd.read_csv(path)
     df = df.drop(columns=[c for c in DROP_COLUMNS if c in df.columns])
     return df
 
 
-def encode_features(df: pd.DataFrame, train_columns: pd.Index | None = None):
+def encode_features(df: pd.DataFrame, train_columns: Optional[pd.Index] = None):
     """One-hot encode nominals; return (X float32 ndarray, feature_names, audit_df).
 
     When ``train_columns`` is provided (validation/test/production scoring),

@@ -30,8 +30,8 @@ import argparse
 import json
 import os
 from pathlib import Path
+from typing import Tuple
 
-import joblib
 import numpy as np
 import pandas as pd
 
@@ -55,7 +55,7 @@ except ImportError:
     )
 
 
-def _resolve_paths(args) -> tuple[Path, Path]:
+def _resolve_paths(args) -> Tuple[Path, Path]:
     data_dir = Path(args.data_dir)
     candidates = [
         data_dir / args.table,
@@ -195,6 +195,8 @@ def main() -> None:
     if args.model == "xgb":
         model.save_model(str(artifact))
     else:
+        import joblib  # lazy: the XGBoost container ships without joblib
+
         joblib.dump(model, artifact)
     print(f"wrote {artifact}")
 
