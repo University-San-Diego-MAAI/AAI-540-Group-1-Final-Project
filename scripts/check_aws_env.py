@@ -26,18 +26,23 @@ import boto3
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
-KEYS = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
-        "AWS_DEFAULT_REGION"]
+# Learner Labs issues temporary credentials: all four values required there.
+# Permanent IAM keypairs (personal accounts) omit the session token - boto3
+# simply picks AWS_SESSION_TOKEN up from the environment when present.
+REQUIRED_KEYS = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION"]
 
 
 def main() -> int:
-    missing = [k for k in KEYS if not os.getenv(k)]
+    missing = [k for k in REQUIRED_KEYS if not os.getenv(k)]
     if not Path(ROOT / ".env").is_file():
-        print("FAIL: .env not found at repo root. Create it with: " + ", ".join(KEYS))
+        print("FAIL: .env not found at repo root. Create it with: "
+              + ", ".join(REQUIRED_KEYS + ["AWS_SESSION_TOKEN (Learner Labs)"]))
         return 1
     if missing:
         print(f"FAIL: .env is missing: {', '.join(missing)}")
         return 2
+    if not os.getenv("AWS_SESSION_TOKEN"):
+        print("note: no AWS_SESSION_TOKEN - assuming permanent IAM keypair")
 
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
     sts = boto3.client("sts", region_name=region)
