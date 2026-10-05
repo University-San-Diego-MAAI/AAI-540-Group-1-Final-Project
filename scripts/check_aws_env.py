@@ -65,8 +65,8 @@ def main() -> int:
     except Exception:
         try:
             names = [b["Name"] for b in s3.list_buckets()["Buckets"]]
-            print(f"bucket   : default {default_bucket} NOT found; available: {names}")
-            return 4
+            print(f"bucket   : {default_bucket} not found (will be auto-created "
+                  f"on first use); existing buckets: {names}")
         except Exception as exc:
             print(f"FAIL: cannot list buckets: {exc}")
             return 5
