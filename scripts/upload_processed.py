@@ -20,8 +20,13 @@ import boto3
 from aws_common import check_credentials, ensure_default_bucket, region
 
 PROCESSED_DIR = ROOT / "data" / "processed"
-DEST_PREFIX = "aai-540-g1/processed/training/"
-FILES = ["training_table.csv", "training_table_1k.csv"]
+# Each table lives in its OWN prefix: Athena's LOCATION reads every file in a
+# directory, so co-locating the 1k smoke table with the 100k table would
+# double-count rows (learned in the first Athena run: 83,480 vs 82,624).
+FILES = {
+    "training_table.csv": "aai-540-g1/processed/training/",
+    "training_table_1k.csv": "aai-540-g1/processed/training_1k/",
+}
 
 
 def main() -> int:
@@ -45,20 +50,19 @@ def main() -> int:
         errors.append(f"public access block incomplete: {pab}")
 
     # --- uploads ---
-    for name in FILES:
+    for name, dest_prefix in FILES.items():
         local = PROCESSED_DIR / name
         if not local.is_file():
             errors.append(f"missing local file: {local}")
             continue
-        key = DEST_PREFIX + name
+        key = dest_prefix + name
         s3.upload_file(str(local), bucket, key)
         remote = s3.head_object(Bucket=bucket, Key=key)
         match = "OK" if remote["ContentLength"] == local.stat().st_size else "SIZE MISMATCH"
-        print(f"uploaded {name}: {remote['ContentLength']:,} bytes ({match})")
+        print(f"uploaded s3://{bucket}/{key}: {remote['ContentLength']:,} bytes ({match})")
         if match != "OK":
             errors.append(f"{name} size mismatch")
 
-    print(f"\ns3://{bucket}/{DEST_PREFIX}")
     if errors:
         print("FAILURES:")
         for e in errors:

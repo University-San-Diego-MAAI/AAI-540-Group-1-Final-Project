@@ -111,7 +111,7 @@ def main() -> int:
         for row in rows:
             print("  " + " | ".join(c.get("VarCharValue", "") for c in row["Data"]))
 
-    print(f"\nREADY — explore at https://console.aws.amazon.com/athena/home?region={region}")
+    print(f"\nREADY — explore at https://console.aws.amazon.com/athena/home?region={region()}")
     return 0
 
 

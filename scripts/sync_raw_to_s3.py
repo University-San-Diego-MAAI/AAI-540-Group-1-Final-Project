@@ -57,7 +57,6 @@ def main() -> int:
                 CopySource={"Bucket": SOURCE_BUCKET, "Key": key},
                 Bucket=dest_bucket,
                 Key=dest_key,
-                ChecksumMode="ENABLED",
             )
             copied += 1
             total_bytes += obj["Size"]
