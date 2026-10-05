@@ -1,9 +1,28 @@
-!data/
-data/*
-!data/processed/
-data/processed/*
-!data/processed/member_features.csv
+# AAI-540 Group 1 Final Project — push only notebooks/ and the processed
+# data folder. Everything else (sources, doc generators, deliverables,
+# archive, environment) stays local.
+
+# --- Environment & OS noise ---
 .venv/
 __pycache__/
+*.pyc
 .ipynb_checkpoints/
 .DS_Store
+
+# --- Data policy ---
+# Raw extracts (~881 MB) are re-downloadable from the public S3 bucket
+# (aws s3 sync --no-sign-request s3://synpuf-omop/...) and exceed GitHub's
+# file-size limits — never commit them.
+data/raw/
+
+# --- Everything that is not notebooks/ or data/ ---
+/src/
+/scripts/
+/assets/
+/archive/
+/README.md
+/REPORT.md
+/requirements.txt
+/AGENTS.md
+*.docx
+*.pdf
