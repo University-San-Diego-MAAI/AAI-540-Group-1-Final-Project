@@ -29,3 +29,7 @@ data/raw/
 
 # keep placeholder files local once folders have content
 .gitkeep
+
+# local smoke-test artifacts (models + metrics regenerate; evidence comes
+# from the SageMaker runs)
+/artifacts/
