@@ -34,3 +34,4 @@ data/raw/
 # from the SageMaker runs)
 /artifacts/
 .venv-sm/
+notebooks/repo/
