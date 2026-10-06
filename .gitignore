@@ -47,3 +47,4 @@ notebooks/repo/
 /model.tar.gz
 /production_scores.csv
 .run_logs/
+notebooks/training_table.csv*
