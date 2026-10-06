@@ -60,12 +60,14 @@ except Exception:
     role = f"arn:aws:iam::{account}:role/{picked}"
 
 # --- 1. data-quality baseline (processing job), polled with prints -------
-existing = {j["ProcessingJobName"]
-            for j in sm.list_processing_jobs(SortBy="CreationTime",
-                                             SortOrder="Descending")["ProcessingJobSummaries"]}
-if any("baseline-suggestion" in n or "data-quality" in n for n in existing):
-    print("baseline job already exists - skipping")
-else:
+def _latest_baseline_job():
+    jobs = sm.list_processing_jobs(SortBy="CreationTime", SortOrder="Descending",
+                                   MaxResults=20)["ProcessingJobSummaries"]
+    return next((j["ProcessingJobName"] for j in jobs
+                 if "baseline-suggestion" in j["ProcessingJobName"]), None)
+
+job = _latest_baseline_job()
+if job is None:
     monitor = DefaultModelMonitor(role=role, instance_count=1,
                                   instance_type="ml.m5.xlarge",
                                   volume_size_in_gb=20, max_runtime_in_seconds=1800)
@@ -74,17 +76,18 @@ else:
         dataset_format=DatasetFormat.csv(header=False),
         output_s3_uri=f"s3://{bucket}/{MON}/data-baseline",
         wait=False, logs=False)
-    job = monitor.latest_job.name
-    print("baseline job submitted:", job, flush=True)
-    while True:
-        pj = sm.describe_processing_job(ProcessingJobName=job)
-        status = pj["ProcessingJobStatus"]
-        print(f"  baseline: {status}", flush=True)
-        if status == "Completed":
-            break
-        if status == "Failed":
-            sys.exit(f"baseline failed: {pj.get('FailureReason')}")
-        time.sleep(20)
+    time.sleep(5)
+    job = _latest_baseline_job()
+print("baseline job:", job, flush=True)
+while True:
+    pj = sm.describe_processing_job(ProcessingJobName=job)
+    status = pj["ProcessingJobStatus"]
+    print(f"  baseline: {status}", flush=True)
+    if status == "Completed":
+        break
+    if status == "Failed":
+        sys.exit(f"baseline failed: {pj.get('FailureReason')}")
+    time.sleep(20)
 
 # --- 2. monitoring schedules (idempotent) ----------------------------------
 existing_sched = {s["MonitoringScheduleName"]
