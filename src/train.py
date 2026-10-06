@@ -110,7 +110,10 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=42)
     # design-doc hyperparameter grid (single values here; the grid sweep runs
     # via the notebook / HyperparameterTuner)
-    p.add_argument("--C", type=float, default=1.0)
+    p.add_argument("--c-reg", dest="C", type=float, default=1.0,
+                   help="L2 inverse regularization (logreg). Passed as --c-reg: "
+                        "the training container renders single-character keys "
+                        "with one dash, which argparse rejects.")
     p.add_argument("--n-estimators", type=int, default=300)
     p.add_argument("--max-depth", type=int, default=6)
     p.add_argument("--min-samples-leaf", type=int, default=5)
