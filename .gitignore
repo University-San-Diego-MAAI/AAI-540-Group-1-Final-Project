@@ -46,3 +46,4 @@ notebooks/repo/
 /champion*
 /model.tar.gz
 /production_scores.csv
+.run_logs/
