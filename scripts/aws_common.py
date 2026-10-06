@@ -11,7 +11,11 @@ Personal-account assumptions:
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:  # minimal envs (e.g. .venv-sm) ship without python-dotenv
+    def load_dotenv(*args, **kwargs):
+        return False
 
 import boto3
 
