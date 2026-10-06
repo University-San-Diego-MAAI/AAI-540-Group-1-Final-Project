@@ -33,3 +33,4 @@ data/raw/
 # local smoke-test artifacts (models + metrics regenerate; evidence comes
 # from the SageMaker runs)
 /artifacts/
+.venv-sm/
