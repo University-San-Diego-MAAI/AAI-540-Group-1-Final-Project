@@ -35,3 +35,14 @@ data/raw/
 /artifacts/
 .venv-sm/
 notebooks/repo/
+
+# notebook-generated scratch files (regenerate any time)
+/training_table.csv
+/split_*.csv
+/scoring_input.csv
+/*_metrics.json
+/ground_truth.jsonl
+/baseline_train.csv
+/champion*
+/model.tar.gz
+/production_scores.csv
