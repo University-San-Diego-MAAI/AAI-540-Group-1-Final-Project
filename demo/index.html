@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AAI-540 Group 1 — Utilization Risk Demo</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background:#0f172a; color:#e2e8f0;
+         max-width: 860px; margin: 40px auto; padding: 0 20px; }
+  h1 { font-size: 22px; } h2 { font-size: 15px; color:#94a3b8; font-weight: 600; }
+  .card { background:#1e293b; border-radius: 12px; padding: 20px; margin-top: 16px; }
+  select, button { font-size: 15px; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155;
+                   background:#0f172a; color:#e2e8f0; }
+  button { background:#2563eb; border: none; cursor: pointer; font-weight: 600; }
+  button:disabled { opacity:.5; }
+  .tier { font-size: 34px; font-weight: 800; margin: 10px 0 2px; }
+  .Low { color:#34d399; } .Medium { color:#fbbf24; } .High { color:#f87171; }
+  .bar { height: 22px; border-radius: 6px; margin: 6px 0; background:#334155; position: relative; overflow:hidden;}
+  .bar > div { height:100%; }
+  .bar span { position:absolute; left:8px; top:2px; font-size:13px; }
+  .facts { display:grid; grid-template-columns: repeat(4,1fr); gap:8px; margin-top:10px; }
+  .fact { background:#0f172a; border-radius:8px; padding:8px; text-align:center; }
+  .fact b { display:block; font-size:18px; }
+  .muted { color:#64748b; font-size:13px; }
+  .tag { display:inline-block; background:#334155; border-radius:999px; padding:2px 10px; font-size:12px; margin:2px;}
+</style>
+</head>
+<body>
+<h1>Member Utilization-Risk Classifier <span class="muted">· AAI-540 Group 1 · CMS DE-SynPUF (synthetic)</span></h1>
+<h2>Champion: XGBoost 1.7-1 · test macro F1 0.774 · High-Risk recall 0.847 · served by SageMaker serverless inference</h2>
+
+<div class="card">
+  <h2>1 · Pick a synthetic member (2008 history window)</h2>
+  <select id="member" style="width:100%"></select>
+  <div class="facts" id="facts"></div>
+  <p class="muted">Chronic flags: <span id="flags"></span></p>
+</div>
+
+<div class="card">
+  <h2>2 · Predict</h2>
+  <button id="go" onclick="predict()">Predict 2009–2010 risk tier</button>
+  <div id="out" style="margin-top:14px"></div>
+</div>
+
+<div class="card">
+  <h2>3 · What the model saw (evidence for the prediction)</h2>
+  <div id="top" class="muted">run a prediction…</div>
+</div>
+
+<script>
+const API = "__API_URL__";   // substituted by deploy_demo_stack.py
+let members = [];
+fetch("members.json").then(r => r.json()).then(m => {
+  members = m;
+  const sel = document.getElementById("member");
+  m.forEach((x, i) => {
+    const o = document.createElement("option");
+    o.value = i;
+    o.textContent = `person ${x.id} — ${x.summary.total_visits} visits, ` +
+      `${x.summary.chf ? "CHF, " : ""}${x.summary.age}y (true outcome: ${x.risk_true})`;
+    sel.appendChild(o);
+  });
+  show(0);
+  sel.onchange = () => show(+sel.value);
+});
+function show(i) {
+  const x = members[i], f = document.getElementById("facts");
+  f.innerHTML = "";
+  [["Age", x.summary.age], ["Total visits", x.summary.total_visits],
+   ["Drug eras", x.summary.drug_eras], ["Obs. months", x.summary.observation_months]]
+   .forEach(([k, v]) => f.innerHTML += `<div class="fact"><b>${v}</b>${k}</div>`);
+  document.getElementById("flags").textContent =
+    ["diabetes","chf","copd","stroke","cancer","renal"].filter(c => x.summary[c]).join(", ") || "none";
+  document.getElementById("out").innerHTML = "";
+  document.getElementById("top").textContent = "run a prediction…";
+}
+async function predict() {
+  const x = members[+document.getElementById("member").value];
+  const btn = document.getElementById("go"); btn.disabled = true; btn.textContent = "scoring…";
+  const out = document.getElementById("out");
+  try {
+    const r = await fetch(API, {method:"POST", headers:{"Content-Type":"application/json"},
+                                body: JSON.stringify({vector: x.vector})});
+    const p = (await r.json()).probabilities;             // [Low, Medium, High]
+    const tiers = ["Low","Medium","High"];
+    const win = p.indexOf(Math.max(...p));
+    out.innerHTML = `<div class="tier ${tiers[win]}">${tiers[win].toUpperCase()} RISK</div>
+      <div class="muted">probabilities from multi:softprob · argmax = predicted tier</div>` +
+      tiers.map((t,i) => `<div class="bar"><div style="width:${(p[i]*100).toFixed(1)}%;
+        background:${["#34d399","#fbbf24","#f87171"][i]}"></div><span>${t} — ${(p[i]*100).toFixed(1)}%</span></div>`).join("");
+    const contrib = [["total_visits","Visit volume"],["chf","CHF"],["age","Age"],
+      ["drug_eras","Pharmacy intensity"],["observation_months","Observation months"]]
+      .map(([k,l]) => `<span class="tag">${l}: <b>${x.summary[k]}</b></span>`).join(" ");
+    document.getElementById("top").innerHTML = contrib +
+      `<p class="muted" style="margin-top:8px">True 2009–2010 outcome for this synthetic member: <b>${x.risk_true}</b>
+       — predictions are scored blind, then compared at evaluation time.</p>`;
+  } catch (e) { out.innerHTML = `<span style="color:#f87171">error: ${e}</span>`; }
+  btn.disabled = false; btn.textContent = "Predict 2009–2010 risk tier";
+}
+</script>
+</body>
+</html>
