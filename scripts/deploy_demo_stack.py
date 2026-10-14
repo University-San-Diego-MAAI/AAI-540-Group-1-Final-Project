@@ -201,7 +201,7 @@ def ensure_api(apigw, lambda_arn, lmb):
         lmb.add_permission(FunctionName=LAMBDA_FN, StatementId="apigw-demo",
                            Action="lambda:InvokeFunction",
                            Principal="apigateway.amazonaws.com",
-                           SourceArn=f"arn:aws:execute-api:{region()}:*:*/*/*")
+                           SourceArn=f"arn:aws:execute-api:{region()}:{boto3.client('sts').get_caller_identity()['Account']}:*/*/*")
     except lmb.exceptions.ResourceConflictException:
         pass
     return url
