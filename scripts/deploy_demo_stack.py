@@ -252,13 +252,15 @@ def main():
             ProductionVariants=[{"VariantName": "demo", "ModelName": MODEL,
                                  "ServerlessConfig": {"MemorySizeInMB": 2048,
                                                       "MaxConcurrency": 10}}])
-    except sm.exceptions.ResourceInUse:
-        pass
+    except sm.exceptions.ClientError as e:
+        if "exist" not in str(e).lower():
+            raise
     try:
         sm.create_endpoint(EndpointName=ENDPOINT, EndpointConfigName=ENDPOINT)
         print("   endpoint creating…")
-    except sm.exceptions.ResourceInUse:
-        pass
+    except sm.exceptions.ClientError as e:
+        if "exist" not in str(e).lower():
+            raise
     sm.get_waiter("endpoint_in_service").wait(
         EndpointName=ENDPOINT, WaiterConfig={"Delay": 15, "MaxAttempts": 60})
     print("   endpoint InService:", ENDPOINT)
