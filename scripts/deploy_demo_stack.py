@@ -256,11 +256,10 @@ def main():
         if "exist" not in str(e).lower():
             raise
     try:
+        sm.describe_endpoint(EndpointName=ENDPOINT)
+    except sm.exceptions.ClientError:
         sm.create_endpoint(EndpointName=ENDPOINT, EndpointConfigName=ENDPOINT)
         print("   endpoint creating…")
-    except sm.exceptions.ClientError as e:
-        if "exist" not in str(e).lower():
-            raise
     sm.get_waiter("endpoint_in_service").wait(
         EndpointName=ENDPOINT, WaiterConfig={"Delay": 15, "MaxAttempts": 60})
     print("   endpoint InService:", ENDPOINT)
