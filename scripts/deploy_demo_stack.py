@@ -241,18 +241,15 @@ def main():
                     PrimaryContainer={"Image": image, "ModelDataUrl": clean_s3})
 
     print("== 4. serverless endpoint")
+    # NOTE: serverless inference endpoints do not support DataCaptureConfig
+    # (verified 2026-10) - monitoring evidence comes from the quality/bias
+    # reports and CloudWatch metrics instead.
     try:
         sm.create_endpoint_config(
             EndpointConfigName=ENDPOINT,
             ProductionVariants=[{"VariantName": "demo", "ModelName": MODEL,
                                  "ServerlessConfig": {"MemorySizeInMB": 2048,
-                                                      "MaxConcurrency": 10}}],
-            DataCaptureConfig={
-                "EnableCapture": True, "InitialSamplingPercentage": 100,
-                "DestinationS3Uri": f"s3://{bucket}/{MON}/capture",
-                "CaptureOptions": [{"CaptureMode": "Input"}, {"CaptureMode": "Output"}],
-                "CaptureContentTypeHeader": {"CsvContentTypes": ["text/csv"]}},
-        )
+                                                      "MaxConcurrency": 10}}])
     except sm.exceptions.ResourceInUse:
         pass
     try:
