@@ -284,7 +284,7 @@ def pipeline_dags(sm, bucket, role):
             break
         time.sleep(30)
 
-    bad = _pipe("aai-540-g1-demo-pipeline-fail", "99")   # invalid eta -> training fails
+    bad = _pipe("aai-540-g1-demo-pipeline-fail", "abc")   # invalid eta -> training fails
     bad.upsert(role_arn=role)
     ex2 = bad.start()
     print("pipeline failure run started:", ex2.arn)
