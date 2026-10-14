@@ -178,10 +178,13 @@ def ensure_lambda(iam, lmb, sm):
                             Timeout=30, MemorySize=256)
         print("lambda created")
     except lmb.exceptions.ResourceConflictException:
+        lmb.get_waiter("function_active").wait(FunctionName=LAMBDA_FN)
         lmb.update_function_code(FunctionName=LAMBDA_FN, ZipFile=buf.getvalue())
+        lmb.get_waiter("function_updated").wait(FunctionName=LAMBDA_FN)
         lmb.update_function_configuration(
             FunctionName=LAMBDA_FN,
             Environment={"Variables": {"ENDPOINT_NAME": ENDPOINT}})
+        lmb.get_waiter("function_updated").wait(FunctionName=LAMBDA_FN)
         print("lambda updated")
     return f"arn:aws:lambda:{region()}:{account}:function:{LAMBDA_FN}"
 
