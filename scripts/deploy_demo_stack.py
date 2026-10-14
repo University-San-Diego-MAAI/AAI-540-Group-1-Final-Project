@@ -139,7 +139,7 @@ def build_members(s3, bucket):
             "summary": {k: (int(row[k]) if k != "age" else int(row[k]))
                         for k in ["age", "total_visits", "drug_eras",
                                   "observation_months", "chf", "diabetes", "copd",
-                                  "stroke", "cancer", "renal"]},
+                                  "stroke", "cancer", "renal_disease"]},
             "vector": [round(float(v), 6) for v in X_all[i]],
         })
     s3.put_object(Bucket=bucket, Key="members.json",

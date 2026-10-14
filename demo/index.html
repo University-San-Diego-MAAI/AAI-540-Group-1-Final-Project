@@ -69,7 +69,7 @@ function show(i) {
    ["Drug eras", x.summary.drug_eras], ["Obs. months", x.summary.observation_months]]
    .forEach(([k, v]) => f.innerHTML += `<div class="fact"><b>${v}</b>${k}</div>`);
   document.getElementById("flags").textContent =
-    ["diabetes","chf","copd","stroke","cancer","renal"].filter(c => x.summary[c]).join(", ") || "none";
+    ["diabetes","chf","copd","stroke","cancer","renal_disease"].filter(c => x.summary[c]).join(", ") || "none";
   document.getElementById("out").innerHTML = "";
   document.getElementById("top").textContent = "run a prediction…";
 }
