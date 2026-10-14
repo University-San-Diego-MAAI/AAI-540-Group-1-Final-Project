@@ -59,6 +59,8 @@ def handler(event, context):
     resp = runtime.invoke_endpoint(EndpointName=ENDPOINT, ContentType="text/csv",
                                    Accept="application/json", Body=csv)
     pred = json.loads(resp["Body"].read().decode())["predictions"][0]
+    if isinstance(pred, dict):            # multi:softprob JSON shape varies by container version
+        pred = pred.get("score") or list(pred.values())[0]
     return {"statusCode": 200,
             "headers": {"Content-Type": "application/json",
                         "Access-Control-Allow-Origin": "*"},

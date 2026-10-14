@@ -177,6 +177,8 @@ def model_reports(bs, bucket, s3):
         resp = runtime.invoke_endpoint(EndpointName=ENDPOINT, ContentType="text/csv",
                                        Accept="application/json", Body=body)
         p = json.loads(resp["Body"].read().decode())["predictions"][0]
+        if isinstance(p, dict):
+            p = p.get("score") or list(p.values())[0]
         preds.append(["Low", "Medium", "High"][max(range(3), key=lambda j: p[j])])
         if i % 100 == 0:
             print(f"  quality probe {i}/{len(X_test)}", flush=True)
