@@ -80,7 +80,12 @@ async function predict() {
   try {
     const r = await fetch(API, {method:"POST", headers:{"Content-Type":"application/json"},
                                 body: JSON.stringify({vector: x.vector})});
-    const p = (await r.json()).probabilities;             // [Low, Medium, High]
+    const payload = await r.json();
+    const p = payload.probabilities;                      // [Low, Medium, High]
+    if (!Array.isArray(p)) {
+        out.innerHTML = "<span style='color:#fbbf24'>endpoint is waking from zero - click again in a few seconds</span>";
+        return;
+    }
     const tiers = ["Low","Medium","High"];
     const win = p.indexOf(Math.max(...p));
     out.innerHTML = `<div class="tier ${tiers[win]}">${tiers[win].toUpperCase()} RISK</div>

@@ -62,8 +62,16 @@ def handler(event, context):
     body = json.loads(event.get("body") or "{}")
     vec = body["vector"]
     csv = ",".join(f"{v:.6g}" for v in vec)
-    resp = runtime.invoke_endpoint(EndpointName=ENDPOINT, ContentType="text/csv",
-                                   Accept="application/json", Body=csv)
+    import time as _t
+    for attempt in range(3):   # serverless cold-start can 500 the first calls
+        try:
+            resp = runtime.invoke_endpoint(EndpointName=ENDPOINT, ContentType="text/csv",
+                                           Accept="application/json", Body=csv)
+            break
+        except runtime.exceptions.ModelError:
+            if attempt == 2:
+                raise
+            _t.sleep(4)
     pred = json.loads(resp["Body"].read().decode())["predictions"][0]
     if isinstance(pred, dict):            # multi:softprob JSON shape varies by container version
         pred = pred.get("score") or list(pred.values())[0]
