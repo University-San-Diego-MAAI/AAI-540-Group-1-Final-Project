@@ -2,104 +2,327 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>AAI-540 Group 1 — Utilization Risk Demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AAI-540 Group 1 — Utilization Risk Operations Console</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-  body { font-family: -apple-system, "Segoe UI", sans-serif; background:#0f172a; color:#e2e8f0;
-         max-width: 860px; margin: 40px auto; padding: 0 20px; }
-  h1 { font-size: 22px; } h2 { font-size: 15px; color:#94a3b8; font-weight: 600; }
-  .card { background:#1e293b; border-radius: 12px; padding: 20px; margin-top: 16px; }
-  select, button { font-size: 15px; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155;
-                   background:#0f172a; color:#e2e8f0; }
-  button { background:#2563eb; border: none; cursor: pointer; font-weight: 600; }
+  :root { --bg:#0b1120; --card:#131c2e; --line:#24304a; --txt:#e2e8f0; --sub:#8ea0bd;
+          --low:#34d399; --med:#fbbf24; --high:#f87171; --acc:#3b82f6; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg);
+         color:var(--txt); margin:0; padding:24px; }
+  .wrap { max-width:1180px; margin:0 auto; }
+  header { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  h1 { font-size:21px; margin:0; }
+  .sub { color:var(--sub); font-size:13px; }
+  .pill { background:#0e2a1e; color:var(--low); border:1px solid #14532d; border-radius:999px;
+          padding:3px 12px; font-size:12px; font-weight:700; }
+  .tabs { display:flex; gap:6px; margin:18px 0; }
+  .tab { background:var(--card); border:1px solid var(--line); color:var(--sub); padding:9px 20px;
+         border-radius:10px; cursor:pointer; font-weight:600; font-size:14px; }
+  .tab.active { color:#fff; background:var(--acc); border-color:var(--acc); }
+  .grid { display:grid; gap:16px; }
+  .g-predict { grid-template-columns: 380px 1fr; }
+  .g-mon { grid-template-columns: repeat(4,1fr); }
+  .g-mon2 { grid-template-columns: 1fr 1fr; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  h2 { font-size:13px; color:var(--sub); text-transform:uppercase; letter-spacing:.06em; margin:0 0 12px; }
+  select, button { font-size:14px; padding:10px 12px; border-radius:9px; border:1px solid var(--line);
+                   background:#0b1120; color:var(--txt); width:100%; }
+  button { background:var(--acc); border:none; font-weight:700; cursor:pointer; margin-top:10px; }
   button:disabled { opacity:.5; }
-  .tier { font-size: 34px; font-weight: 800; margin: 10px 0 2px; }
-  .Low { color:#34d399; } .Medium { color:#fbbf24; } .High { color:#f87171; }
-  .bar { height: 22px; border-radius: 6px; margin: 6px 0; background:#334155; position: relative; overflow:hidden;}
-  .bar > div { height:100%; }
-  .bar span { position:absolute; left:8px; top:2px; font-size:13px; }
-  .facts { display:grid; grid-template-columns: repeat(4,1fr); gap:8px; margin-top:10px; }
-  .fact { background:#0f172a; border-radius:8px; padding:8px; text-align:center; }
-  .fact b { display:block; font-size:18px; }
-  .muted { color:#64748b; font-size:13px; }
-  .tag { display:inline-block; background:#334155; border-radius:999px; padding:2px 10px; font-size:12px; margin:2px;}
+  .facts { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+  .fact { background:#0b1120; border-radius:10px; padding:10px; text-align:center; }
+  .fact b { display:block; font-size:20px; }
+  .fact span { color:var(--sub); font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
+  .tier { font-size:42px; font-weight:900; letter-spacing:-.01em; }
+  .tier.Low { color:var(--low); } .tier.Medium { color:var(--med); } .tier.High { color:var(--high); }
+  .kpi { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .kpi b { font-size:26px; display:block; }
+  .kpi span { color:var(--sub); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+  .kpi .ok { color:var(--low); } .kpi .warn { color:var(--med); }
+  .cm-grid { display:grid; grid-template-columns:70px repeat(3,1fr); gap:5px; margin-top:6px; }
+  .cm-cell { border-radius:8px; padding:14px 0; text-align:center; font-weight:700; font-size:16px; }
+  .cm-h { color:var(--sub); font-size:12px; text-align:center; align-self:center; }
+  canvas { max-height:250px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  td, th { border:1px solid var(--line); padding:6px 10px; }
+  .tag { display:inline-block; background:#1e293b; border-radius:999px; padding:3px 12px;
+         font-size:12px; margin:3px 4px 0 0; }
+  .note { color:var(--sub); font-size:12.5px; line-height:1.5; }
+  .flag { color:var(--med); }
+  .chartbox { position:relative; height:250px; }
+  img.arch { width:100%; border-radius:10px; border:1px solid var(--line); }
+  .flow { line-height:1.9; }
+  .flow b { color:#93c5fd; }
+  #err { color:var(--high); margin-top:10px; font-size:13px; }
+  .hidden { display:none; }
 </style>
 </head>
 <body>
-<h1>Member Utilization-Risk Classifier <span class="muted">· AAI-540 Group 1 · CMS DE-SynPUF (synthetic)</span></h1>
-<h2>Champion: XGBoost 1.7-1 · test macro F1 0.774 · High-Risk recall 0.847 · served by SageMaker serverless inference</h2>
+<div class="wrap">
+<header>
+  <h1>Member Utilization-Risk Console</h1>
+  <span class="sub">AAI-540 Group 1 · CMS DE-SynPUF (synthetic) · XGBoost champion · macro F1 0.774 / High-recall 0.847</span>
+  <span class="pill" id="status">endpoint: warming…</span>
+</header>
 
-<div class="card">
-  <h2>1 · Pick a synthetic member (2008 history window)</h2>
-  <select id="member" style="width:100%"></select>
-  <div class="facts" id="facts"></div>
-  <p class="muted">Chronic flags: <span id="flags"></span></p>
+<div class="tabs">
+  <div class="tab active" data-tab="predict">1 · Predict</div>
+  <div class="tab" data-tab="monitor">2 · Monitoring</div>
+  <div class="tab" data-tab="arch">3 · Architecture</div>
 </div>
 
-<div class="card">
-  <h2>2 · Predict</h2>
-  <button id="go" onclick="predict()">Predict 2009–2010 risk tier</button>
-  <div id="out" style="margin-top:14px"></div>
-</div>
+<!-- ============ PREDICT ============ -->
+<section id="tab-predict" class="grid g-predict">
+  <div class="card">
+    <h2>Pick a synthetic member (2008 history)</h2>
+    <select id="member"></select>
+    <div class="facts" id="facts"></div>
+    <p class="note" style="margin-top:10px">Chronic flags: <span id="flags" class="flag">–</span></p>
+    <button id="go" onclick="predict()">Predict 2009–2010 risk tier</button>
+    <div id="err"></div>
+  </div>
+  <div class="grid" style="grid-template-rows:auto auto 1fr">
+    <div class="card" style="display:flex; align-items:center; gap:28px">
+      <div style="flex:1">
+        <div class="tier" id="tier">—</div>
+        <div class="sub" id="tier-sub">run a prediction</div>
+        <div id="true-outcome" class="note" style="margin-top:8px"></div>
+      </div>
+      <div class="chartbox" style="width:240px;height:200px">
+        <canvas id="donut"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <h2>What the model saw — member vs class averages (z-scored)</h2>
+      <div class="chartbox"><canvas id="vschart"></canvas></div>
+    </div>
+  </div>
+</section>
 
-<div class="card">
-  <h2>3 · What the model saw (evidence for the prediction)</h2>
-  <div id="top" class="muted">run a prediction…</div>
+<!-- ============ MONITORING ============ -->
+<section id="tab-monitor" class="hidden">
+  <div class="grid g-mon" id="kpis"></div>
+  <div class="grid g-mon2" style="margin-top:16px">
+    <div class="card"><h2>Endpoint traffic — invocations (5-min)</h2>
+      <div class="chartbox"><canvas id="invChart"></canvas></div></div>
+    <div class="card"><h2>Endpoint latency — avg ms per 5-min</h2>
+      <div class="chartbox"><canvas id="latChart"></canvas></div></div>
+  </div>
+  <div class="grid g-mon2" style="margin-top:16px">
+    <div class="card">
+      <h2>Confusion matrix — 400 live-scored held-out members</h2>
+      <div class="cm-grid" id="cm"></div>
+      <p class="note" style="margin-top:8px">rows = true tier · columns = predicted · darker = more members</p>
+    </div>
+    <div class="card"><h2>Per-class F1 (live evaluation)</h2>
+      <div class="chartbox"><canvas id="f1Chart"></canvas></div></div>
+  </div>
+  <div class="grid g-mon2" style="margin-top:16px">
+    <div class="card"><h2>Data quality — training distribution: total visits</h2>
+      <div class="chartbox"><canvas id="histChart"></canvas></div>
+      <p class="note">rendered from the SageMaker Model Monitor baseline statistics.json</p></div>
+    <div class="card"><h2>Constraint checks &amp; bias</h2>
+      <div id="constraints" class="note">loading…</div>
+      <hr style="border-color:var(--line);margin:12px 0">
+      <div id="bias" class="note">loading…</div></div>
+  </div>
+</section>
+
+<!-- ============ ARCHITECTURE ============ -->
+<section id="tab-arch" class="hidden">
+  <div class="card">
+    <h2>System architecture</h2>
+    <img class="arch" src="architecture.png" alt="architecture diagram"
+         onerror="this.outerHTML='<p class=note>diagram: see assets/architecture_diagram.png in the repo</p>'">
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Request flow for one prediction</h2>
+    <p class="flow">
+      <b>S3 static site</b> (this page) → <b>API Gateway HTTP API</b> → <b>Lambda proxy</b> →
+      <b>SageMaker serverless endpoint</b> (XGBoost 1.7-1 champion, multi:softprob) →
+      probabilities returned → rendered here.<br>
+      <b>Side paths:</b> every request is counted in <b>CloudWatch</b> (dashboard + alarms);
+      training data flows S3 → <b>Feature Store</b> → training jobs → <b>Model Registry</b> (approval gate) → this endpoint.
+    </p>
+  </div>
+</section>
 </div>
 
 <script>
-const API = "__API_URL__";   // substituted by deploy_demo_stack.py
-let members = [];
-fetch("members.json").then(r => r.json()).then(m => {
-  members = m;
+const TIER_COLORS = { Low:"#34d399", Medium:"#fbbf24", High:"#f87171" };
+const TIERS = ["Low","Medium","High"];
+let members = [], profiles = null, donut = null, vsChart = null;
+
+/* ---------- tabs ---------- */
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x === t));
+  ["predict","monitor","arch"].forEach(id =>
+    document.getElementById("tab-"+id).classList.toggle("hidden", id !== t.dataset.tab));
+});
+
+/* ---------- data loads ---------- */
+Promise.all([
+  fetch("members.json").then(r => r.json()),
+  fetch("class_profile.json").then(r => r.json()).catch(() => null),
+  fetch("reports/model_quality_report.json").then(r => r.json()).catch(() => null),
+  fetch("reports/statistics.json").then(r => r.json()).catch(() => null),
+  fetch("reports/constraints.json").then(r => r.json()).catch(() => null),
+  fetch("reports/bias_note.txt").then(r => r.text()).catch(() => "not generated"),
+  fetch("monitoring/metrics.json").then(r => r.json()).catch(() => null),
+]).then(([m, prof, mq, stats, constr, biasNote, metrics]) => {
+  members = m; profiles = prof;
+  fillMembers(); showMember(0); renderMonitor(mq, stats, constr, biasNote, metrics);
+  document.getElementById("status").textContent = "endpoint: ready";
+});
+
+function fillMembers() {
   const sel = document.getElementById("member");
-  m.forEach((x, i) => {
+  members.forEach((x, i) => {
     const o = document.createElement("option");
     o.value = i;
-    o.textContent = `person ${x.id} — ${x.summary.total_visits} visits, ` +
-      `${x.summary.chf ? "CHF, " : ""}${x.summary.age}y (true outcome: ${x.risk_true})`;
+    o.textContent = `person ${x.id} — ${x.summary.total_visits} visits, ${x.summary.age}y (true: ${x.risk_true})`;
     sel.appendChild(o);
   });
-  show(0);
-  sel.onchange = () => show(+sel.value);
-});
-function show(i) {
+  sel.onchange = () => showMember(+sel.value);
+}
+function showMember(i) {
   const x = members[i], f = document.getElementById("facts");
   f.innerHTML = "";
-  [["Age", x.summary.age], ["Total visits", x.summary.total_visits],
-   ["Drug eras", x.summary.drug_eras], ["Obs. months", x.summary.observation_months]]
-   .forEach(([k, v]) => f.innerHTML += `<div class="fact"><b>${v}</b>${k}</div>`);
+  [["Age",x.summary.age],["Total visits",x.summary.total_visits],
+   ["Drug eras",x.summary.drug_eras],["Obs. months",x.summary.observation_months]]
+   .forEach(([k,v]) => f.innerHTML += `<div class="fact"><b>${v}</b><span>${k}</span></div>`);
   document.getElementById("flags").textContent =
     ["diabetes","chf","copd","stroke","cancer","renal_disease"].filter(c => x.summary[c]).join(", ") || "none";
-  document.getElementById("out").innerHTML = "";
-  document.getElementById("top").textContent = "run a prediction…";
+  document.getElementById("tier").textContent = "—";
+  document.getElementById("tier-sub").textContent = "run a prediction";
+  document.getElementById("true-outcome").textContent = "";
+  document.getElementById("err").textContent = "";
+  drawVs(x);
+}
+function drawVs(x) {
+  if (!profiles) return;
+  const feats = profiles.features;
+  const vals = feats.map(f => {
+    const mu = profiles.all[f].mean, sd = profiles.all[f].std || 1;
+    return ((x.summary_raw[f] - mu) / sd);
+  });
+  const ds = TIERS.map(t => ({
+    label: t + " avg", data: feats.map(f => profiles[t][f]),
+    backgroundColor: TIER_COLORS[t] + "55", borderColor: TIER_COLORS[t], borderWidth:1 }));
+  ds.push({ label:"this member", data: vals, backgroundColor:"#3b82f6", borderColor:"#93c5fd" });
+  if (vsChart) vsChart.destroy();
+  vsChart = new Chart(document.getElementById("vschart"), {
+    type:"bar",
+    data:{ labels: feats, datasets: ds },
+    options:{ indexAxis:"y", responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:"#e2e8f0", boxWidth:12 } } },
+      scales:{ x:{ ticks:{ color:"#8ea0bd" }, grid:{ color:"#24304a" } },
+               y:{ ticks:{ color:"#e2e8f0" }, grid:{ display:false } } } }
+  });
 }
 async function predict() {
   const x = members[+document.getElementById("member").value];
-  const btn = document.getElementById("go"); btn.disabled = true; btn.textContent = "scoring…";
-  const out = document.getElementById("out");
+  const btn = document.getElementById("go");
+  btn.disabled = true; btn.textContent = "scoring…";
+  document.getElementById("err").textContent = "";
   try {
-    const r = await fetch(API, {method:"POST", headers:{"Content-Type":"application/json"},
-                                body: JSON.stringify({vector: x.vector})});
+    const r = await fetch("https://uc86rn4qnl.execute-api.us-east-1.amazonaws.com/predict".replace("https://","https://"), {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ vector: x.vector }) });
     const payload = await r.json();
-    const p = payload.probabilities;                      // [Low, Medium, High]
+    const p = payload.probabilities;
     if (!Array.isArray(p)) {
-        out.innerHTML = "<span style='color:#fbbf24'>endpoint is waking from zero - click again in a few seconds</span>";
-        return;
+      document.getElementById("err").textContent = "endpoint is waking from zero — click again in a few seconds";
+      return;
     }
-    const tiers = ["Low","Medium","High"];
-    const win = p.indexOf(Math.max(...p));
-    out.innerHTML = `<div class="tier ${tiers[win]}">${tiers[win].toUpperCase()} RISK</div>
-      <div class="muted">probabilities from multi:softprob · argmax = predicted tier</div>` +
-      tiers.map((t,i) => `<div class="bar"><div style="width:${(p[i]*100).toFixed(1)}%;
-        background:${["#34d399","#fbbf24","#f87171"][i]}"></div><span>${t} — ${(p[i]*100).toFixed(1)}%</span></div>`).join("");
-    const contrib = [["total_visits","Visit volume"],["chf","CHF"],["age","Age"],
-      ["drug_eras","Pharmacy intensity"],["observation_months","Observation months"]]
-      .map(([k,l]) => `<span class="tag">${l}: <b>${x.summary[k]}</b></span>`).join(" ");
-    document.getElementById("top").innerHTML = contrib +
-      `<p class="muted" style="margin-top:8px">True 2009–2010 outcome for this synthetic member: <b>${x.risk_true}</b>
-       — predictions are scored blind, then compared at evaluation time.</p>`;
-  } catch (e) { out.innerHTML = `<span style="color:#f87171">error: ${e}</span>`; }
+    const win = p.indexOf(Math.max(...p)), tier = TIERS[win];
+    document.getElementById("tier").textContent = tier.toUpperCase();
+    document.getElementById("tier").className = "tier " + tier;
+    document.getElementById("tier-sub").textContent =
+      `confidence ${(p[win]*100).toFixed(1)}% · multi:softprob argmax`;
+    document.getElementById("true-outcome").innerHTML =
+      `true 2009–2010 outcome for this synthetic member: <b style="color:${TIER_COLORS[x.risk_true]}">${x.risk_true}</b>` +
+      (x.risk_true === tier ? " — model agrees ✓" : " — model disagrees (see Monitoring tab for why that matters)");
+    if (donut) donut.destroy();
+    donut = new Chart(document.getElementById("donut"), {
+      type:"doughnut",
+      data:{ labels: TIERS, datasets:[{ data: p.map(v => +(v*100).toFixed(1)),
+        backgroundColor: TIERS.map(t => TIER_COLORS[t]), borderColor:"#131c2e", borderWidth:4 }] },
+      options:{ responsive:true, maintainAspectRatio:false, cutout:"62%",
+        plugins:{ legend:{ position:"bottom", labels:{ color:"#e2e8f0", boxWidth:12 } } } }
+    });
+  } catch (e) { document.getElementById("err").textContent = "error: " + e; }
   btn.disabled = false; btn.textContent = "Predict 2009–2010 risk tier";
+}
+
+/* ---------- monitoring tab ---------- */
+function renderMonitor(mq, stats, constr, biasNote, metrics) {
+  if (mq) {
+    const cr = mq.classification_report, cm = mq.confusion_matrix;
+    document.getElementById("kpis").innerHTML = [
+      [mq.macro_f1, "macro F1 (live eval)", "ok"],
+      [cr.High.recall.toFixed(3), "High-risk recall", ""],
+      [(metrics ? metrics.total_invocations : "—"), "endpoint invocations", ""],
+      [(metrics ? Math.round(metrics.avg_latency_ms) + " ms" : "—"), "avg latency (incl. cold starts)", "warn"],
+    ].map(([v,l,c]) => `<div class="kpi"><b class="${c}">${v}</b><span>${l}</span></div>`).join("");
+    // confusion matrix
+    const maxV = Math.max(...cm.flat());
+    let html = `<div class="cm-h"></div>` + TIERS.map(t => `<div class="cm-h">${t}</div>`).join("");
+    cm.forEach((row,i) => {
+      html += `<div class="cm-h">${TIERS[i]}</div>` + row.map(v =>
+        `<div class="cm-cell" style="background:rgba(59,130,246,${(v/maxV*0.7+0.06).toFixed(2)})">${v}</div>`).join("");
+    });
+    document.getElementById("cm").innerHTML = html;
+    new Chart(document.getElementById("f1Chart"), {
+      type:"bar",
+      data:{ labels: TIERS, datasets:[{ label:"f1", data: TIERS.map(t => cr[t].f1),
+        backgroundColor: TIERS.map(t => TIER_COLORS[t]) },
+        { label:"recall", data: TIERS.map(t => cr[t].recall), backgroundColor:"#3b82f688" }]},
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ labels:{ color:"#e2e8f0", boxWidth:12 } } },
+        scales:{ y:{ min:0, max:1, ticks:{ color:"#8ea0bd" }, grid:{ color:"#24304a" } },
+                 x:{ ticks:{ color:"#e2e8f0" }, grid:{ display:false } } } }
+    });
+  }
+  if (stats && stats.common && stats.common.total_visits && stats.common.total_visits.distribution) {
+    const d = stats.common.total_visits.distribution;
+    new Chart(document.getElementById("histChart"), {
+      type:"bar",
+      data:{ labels: d.bin_edges.slice(0,-1).map((e,i) => `${Math.round(e)}–${Math.round(d.bin_edges[i+1])}`),
+             datasets:[{ data: d.frequencies, backgroundColor:"#3b82f6aa" }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ display:false } },
+        scales:{ x:{ ticks:{ color:"#8ea0bd", maxRotation:60 }, grid:{ display:false }, title:{ display:true, text:"visits", color:"#8ea0bd" } },
+                 y:{ ticks:{ color:"#8ea0bd" }, grid:{ color:"#24304a" }, title:{ display:true, text:"members", color:"#8ea0bd" } } } }
+    });
+  } else if (stats) {
+    document.getElementById("histChart").parentElement.innerHTML =
+      "<p class='note'>statistics.json schema: " + Object.keys(stats).join(", ") + "</p>";
+  }
+  if (constr) {
+    const v = (constr.metadata && constr.metadata.common) || {};
+    const keys = Object.keys(v).filter(k => Array.isArray(v[k]) && v[k].length);
+    document.getElementById("constraints").innerHTML = "<b>Constraint checks (baseline):</b><br>" +
+      (keys.length ? keys.map(k => `<span class="tag" style="color:var(--med)">${k}: ${v[k].join(", ")}</span>`).join("")
+                   : "<span class='tag' style='color:var(--low)'>all baseline constraints pass</span>");
+  }
+  document.getElementById("bias").innerHTML = "<b>Bias monitor:</b><br><span class='note'>" +
+    biasNote.split("\n")[0] + "</span>";
+  if (metrics) {
+    const line = (id, data, color, label) => new Chart(document.getElementById(id), {
+      type:"line",
+      data:{ labels: metrics.timestamps, datasets:[{ label, data, borderColor:color,
+        backgroundColor:color+"33", fill:true, tension:0.3, pointRadius:2 }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ labels:{ color:"#e2e8f0", boxWidth:12 } } },
+        scales:{ x:{ ticks:{ color:"#8ea0bd", maxTicksLimit:8 }, grid:{ color:"#24304a" } },
+                 y:{ ticks:{ color:"#8ea0bd" }, grid:{ color:"#24304a" } } } }
+    });
+    line("invChart", metrics.invocations, "#34d399", "invocations");
+    line("latChart", metrics.latency_ms, "#fbbf24", "avg latency ms");
+  }
 }
 </script>
 </body>
