@@ -116,8 +116,8 @@
       <div class="cm-grid" id="cm"></div>
       <p class="note" style="margin-top:8px">rows = true tier · columns = predicted · darker = more members</p>
     </div>
-    <div class="card"><h2>Per-class F1 (live evaluation)</h2>
-      <div class="chartbox"><canvas id="f1Chart"></canvas></div></div>
+    <div class="card"><h2>Per-class F1 + recall (live evaluation)</h2>
+      <div id="f1bars" style="padding-top:6px"></div></div>
   </div>
   <div class="grid g-mon2" style="margin-top:16px">
     <div class="card"><h2>Data quality — training distribution: total visits</h2>
@@ -284,16 +284,19 @@ async function renderMonitor(mq, stats, constr, biasNote, metrics) {
         `<div class="cm-cell" style="background:rgba(59,130,246,${(v/maxV*0.7+0.06).toFixed(2)})">${v}</div>`).join("");
     });
     document.getElementById("cm").innerHTML = html;
-    new Chart(document.getElementById("f1Chart"), {
-      type:"bar",
-      data:{ labels: TIERS, datasets:[{ label:"f1", data: TIERS.map(t => cr[t]['f1-score']),
-        backgroundColor: TIERS.map(t => TIER_COLORS[t]) },
-        { label:"recall", data: TIERS.map(t => cr[t].recall), backgroundColor:"#3b82f688" }]},
-      options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{ labels:{ color:"#e2e8f0", boxWidth:12 } } },
-        scales:{ y:{ min:0, max:1, ticks:{ color:"#8ea0bd" }, grid:{ color:"#24304a" } },
-                 x:{ ticks:{ color:"#e2e8f0" }, grid:{ display:false } } } }
-    });
+    document.getElementById("f1bars").innerHTML = TIERS.map(t => `
+      <div style="margin:14px 0">
+        <div style="display:flex;justify-content:space-between;font-size:13px">
+          <b style="color:${TIER_COLORS[t]}">${t}</b>
+          <span style="color:#8ea0bd">f1 ${cr[t]['f1-score'].toFixed(3)} · recall ${cr[t].recall.toFixed(3)}</span>
+        </div>
+        <div style="height:10px;background:#24304a;border-radius:5px;margin-top:5px">
+          <div style="height:10px;width:${(cr[t]['f1-score']*100).toFixed(1)}%;background:${TIER_COLORS[t]};border-radius:5px"></div>
+        </div>
+        <div style="height:6px;background:#24304a55;border-radius:3px;margin-top:4px">
+          <div style="height:6px;width:${(cr[t].recall*100).toFixed(1)}%;background:#3b82f6;border-radius:3px"></div>
+        </div>
+      </div>`).join("");
   }
   const hist = await fetch("monitoring/visits_hist.json").then(r=>r.json()).catch(()=>null);
   if (hist) {
