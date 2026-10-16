@@ -286,20 +286,17 @@ function renderMonitor(mq, stats, constr, biasNote, metrics) {
                  x:{ ticks:{ color:"#e2e8f0" }, grid:{ display:false } } } }
     });
   }
-  if (stats && stats.common && stats.common.total_visits && stats.common.total_visits.distribution) {
-    const d = stats.common.total_visits.distribution;
+  const hist = await fetch("monitoring/visits_hist.json").then(r=>r.json()).catch(()=>null);
+  if (hist) {
     new Chart(document.getElementById("histChart"), {
       type:"bar",
-      data:{ labels: d.bin_edges.slice(0,-1).map((e,i) => `${Math.round(e)}–${Math.round(d.bin_edges[i+1])}`),
-             datasets:[{ data: d.frequencies, backgroundColor:"#3b82f6aa" }] },
+      data:{ labels: hist.labels,
+             datasets:[{ data: hist.counts, backgroundColor:"#3b82f6aa" }] },
       options:{ responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{ display:false } },
         scales:{ x:{ ticks:{ color:"#8ea0bd", maxRotation:60 }, grid:{ display:false }, title:{ display:true, text:"visits", color:"#8ea0bd" } },
                  y:{ ticks:{ color:"#8ea0bd" }, grid:{ color:"#24304a" }, title:{ display:true, text:"members", color:"#8ea0bd" } } } }
     });
-  } else if (stats) {
-    document.getElementById("histChart").parentElement.innerHTML =
-      "<p class='note'>statistics.json schema: " + Object.keys(stats).join(", ") + "</p>";
   }
   if (constr) {
     const v = (constr.metadata && constr.metadata.common) || {};

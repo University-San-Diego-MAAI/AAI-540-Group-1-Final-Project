@@ -92,6 +92,13 @@ def main():
     s3.put_object(Bucket=bucket, Key="monitoring/metrics.json", Body=json.dumps(metrics))
     print(f"metrics.json: {metrics['total_invocations']} invocations over {len(timestamps)} periods")
 
+    # visits histogram (real bins from the training table; statistics.json carries
+    # the same profile as a KLL sketch - awkward for charting)
+    counts, edges = pd.cut(table["total_visits"], bins=20, retbins=True)
+    hist = {"labels": [f"{int(edges[i])}–{int(edges[i+1])}" for i in range(20)],
+            "counts": [int(v) for v in counts.value_counts().sort_index()]}
+    s3.put_object(Bucket=bucket, Key="monitoring/visits_hist.json", Body=json.dumps(hist))
+
     arch = ROOT / "assets" / "architecture_diagram.png"
     if arch.is_file():
         s3.upload_file(str(arch), bucket, "architecture.png")
