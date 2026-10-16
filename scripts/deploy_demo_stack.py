@@ -304,12 +304,12 @@ def main():
     dashboard = {"widgets": [
         {"type": "metric", "x": 0, "y": 0, "width": 12, "height": 6,
          "properties": {"title": "Demo endpoint: invocations + 5XX",
-                        "metrics": [["AWS/SageMaker", "Invocations", "EndpointName", ENDPOINT],
-                                    [".", "ModelInvocation5XXErrors", ".", "."]],
+                        "metrics": [["AWS/SageMaker", "Invocations", "EndpointName", ENDPOINT, "VariantName", "demo"],
+                                    [".", "ModelInvocation5XXErrors", ".", ".", ".", "."]],
                         "period": 60, "stat": "Sum", "region": r}},
         {"type": "metric", "x": 12, "y": 0, "width": 12, "height": 6,
          "properties": {"title": "Demo endpoint: latency (ms)",
-                        "metrics": [["AWS/SageMaker", "ModelLatency", "EndpointName", ENDPOINT]],
+                        "metrics": [["AWS/SageMaker", "ModelLatency", "EndpointName", ENDPOINT, "VariantName", "demo"]],
                         "period": 60, "stat": "Average", "region": r}}]}
     cw.put_dashboard(DashboardName=DASHBOARD, DashboardBody=json.dumps(dashboard))
 
