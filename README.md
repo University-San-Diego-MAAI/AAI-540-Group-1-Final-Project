@@ -51,7 +51,7 @@ OvR ROC-AUC 0.917.
    ```
 
 4. AWS phase: place credentials in a repo-root `.env` (`AWS_ACCESS_KEY_ID`,
-   `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`), verify with
-   `scripts/check_aws_env.py`, then run the `scripts/` and `notebooks/`
-   above. SageMaker SDK work uses the isolated `.venv-sm` (Python 3.9,
-   `sagemaker>=2,<3`).
+   `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`), then run the `scripts/`
+   and `notebooks/` above. SageMaker SDK work uses an isolated Python 3.9
+   environment with `sagemaker>=2,<3` (SDK v3 removed the APIs these
+   notebooks use).

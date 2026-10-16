@@ -48,3 +48,11 @@ notebooks/repo/
 /production_scores.csv
 .run_logs/
 notebooks/training_table.csv*
+
+# local-only tooling (kept on disk, not part of the course project)
+scripts/build_*
+scripts/check_aws_env.py
+scripts/ensure_execution_role.py
+scripts/teardown_aws.py
+scripts/finish_nb06.py
+scripts/demo_evidence.py

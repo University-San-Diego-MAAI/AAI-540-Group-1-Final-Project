@@ -341,7 +341,7 @@ def main():
   Dashboard:     CloudWatch -> Dashboards -> {DASHBOARD}
   Reports prefix: s3://{bucket}/{MON}/
 
-Next: scripts/demo_evidence.py  (baseline/bias/quality reports, ~25 min)
+Monitoring report artifacts land under aai-540-g1/monitoring/ in the default bucket.
 Then: .venv-sm/bin/python scripts/demo_day.py on   (keeps endpoint warm while recording)
 """)
 

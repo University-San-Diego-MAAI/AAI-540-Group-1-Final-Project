@@ -1,7 +1,7 @@
 # Demo & Recording Runbook — AAI-540 Group 1
 
-Everything below assumes `scripts/deploy_demo_stack.py` + `scripts/demo_evidence.py`
-have run (one command chain; ~55 min, <$2). The stack then costs **~$0.05–0.10/month**
+Everything below assumes `scripts/deploy_demo_stack.py` has run
+(monitoring evidence jobs included; ~15 min, <$2). The stack then costs **~$0.05–0.10/month**
 at rest (S3 website + reports; the serverless endpoint is $0 until invoked).
 
 ## Part 1 — Recording-day setup (5 minutes, before you hit record)
@@ -37,8 +37,8 @@ Open these four tabs before recording:
 ## Part 3 — After recording
 
 1. Ctrl+C the `demo_day.py` warmth process (endpoint returns to $0 at rest)
-2. Optional full teardown: `.venv/bin/python scripts/teardown_aws.py`
-   (deletes endpoint/registry/feature group; re-run the two demo scripts any time to restore)
+2. Optional: delete the demo endpoint/registry/feature group from the SageMaker
+   console when the course ends (the endpoint costs $0 at rest, so there is no hurry)
 
 ## Cost summary
 - At rest: <$0.10/month (S3 + static hosting + report storage)

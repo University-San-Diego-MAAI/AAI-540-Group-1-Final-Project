@@ -6,7 +6,7 @@ CopyObject - nothing transits this machine, so it is fast and safe on home
 bandwidth. The source bucket is public: reads succeed with the project's
 signed credentials (no --no-sign-request needed when creds exist).
 
-Requires repo-root .env (see scripts/check_aws_env.py). Idempotent: existing
+Requires repo-root .env with AWS credentials. Idempotent: existing
 objects with matching size are skipped.
 
 Run from the repo root:  .venv/bin/python scripts/sync_raw_to_s3.py

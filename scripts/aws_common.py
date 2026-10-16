@@ -28,7 +28,7 @@ PREFIX = "aai-540-g1"
 def check_credentials() -> None:
     if not os.getenv("AWS_ACCESS_KEY_ID") or not os.getenv("AWS_SECRET_ACCESS_KEY"):
         raise SystemExit(
-            "FAIL: .env credentials missing — run scripts/check_aws_env.py first."
+            "FAIL: .env credentials missing (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)."
         )
 
 
