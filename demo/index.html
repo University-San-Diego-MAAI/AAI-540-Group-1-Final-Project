@@ -160,6 +160,7 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
   document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x === t));
   ["predict","monitor","arch"].forEach(id =>
     document.getElementById("tab-"+id).classList.toggle("hidden", id !== t.dataset.tab));
+  setTimeout(() => window.dispatchEvent(new Event("resize")), 60);  // repaint charts
 });
 
 /* ---------- data loads ---------- */
@@ -285,7 +286,7 @@ async function renderMonitor(mq, stats, constr, biasNote, metrics) {
     document.getElementById("cm").innerHTML = html;
     new Chart(document.getElementById("f1Chart"), {
       type:"bar",
-      data:{ labels: TIERS, datasets:[{ label:"f1", data: TIERS.map(t => cr[t].f1),
+      data:{ labels: TIERS, datasets:[{ label:"f1", data: TIERS.map(t => cr[t]['f1-score']),
         backgroundColor: TIERS.map(t => TIER_COLORS[t]) },
         { label:"recall", data: TIERS.map(t => cr[t].recall), backgroundColor:"#3b82f688" }]},
       options:{ responsive:true, maintainAspectRatio:false,
