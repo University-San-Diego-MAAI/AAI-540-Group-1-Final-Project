@@ -53,6 +53,12 @@ import json, os, boto3
 runtime = boto3.client("sagemaker-runtime")
 ENDPOINT = os.environ["ENDPOINT_NAME"]
 def handler(event, context):
+    if event.get("requestContext", {}).get("http", {}).get("method") == "OPTIONS":
+        return {"statusCode": 200,
+                "headers": {"Access-Control-Allow-Origin": "*",
+                            "Access-Control-Allow-Methods": "POST,OPTIONS",
+                            "Access-Control-Allow-Headers": "*"},
+                "body": ""}
     body = json.loads(event.get("body") or "{}")
     vec = body["vector"]
     csv = ",".join(f"{v:.6g}" for v in vec)
