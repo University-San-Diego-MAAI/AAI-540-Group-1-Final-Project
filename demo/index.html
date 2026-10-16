@@ -175,6 +175,14 @@ Promise.all([
   members = m; profiles = prof;
   fillMembers(); showMember(0); renderMonitor(mq, stats, constr, biasNote, metrics);
   document.getElementById("status").textContent = "endpoint: ready";
+  // screenshot hook: ?tab=monitor|arch&member=<person id>&predict=1
+  const q = new URLSearchParams(location.search);
+  if (q.get("tab")) document.querySelector(`.tab[data-tab="${q.get("tab")}"]`)?.click();
+  if (q.get("member")) {
+    const i = members.findIndex(x => x.id === +q.get("member"));
+    if (i >= 0) { document.getElementById("member").value = i; showMember(i); }
+  }
+  if (q.get("predict")) setTimeout(() => predict(), 800);
 });
 
 function fillMembers() {
