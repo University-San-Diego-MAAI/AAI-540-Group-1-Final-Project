@@ -258,7 +258,7 @@ async function predict() {
 }
 
 /* ---------- monitoring tab ---------- */
-function renderMonitor(mq, stats, constr, biasNote, metrics) {
+async function renderMonitor(mq, stats, constr, biasNote, metrics) {
   if (mq) {
     const cr = mq.classification_report, cm = mq.confusion_matrix;
     document.getElementById("kpis").innerHTML = [
