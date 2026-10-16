@@ -210,6 +210,25 @@ def table(doc, headers, rows, widths=None):
 # --------------------------------------------------------------------------- #
 # Content
 # --------------------------------------------------------------------------- #
+def figure_placeholder(doc, n: int, title: str, filename: str) -> None:
+    """Bordered, shaded placeholder the team replaces with the rendered figure."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    ph = doc.add_paragraph()
+    ph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = ph.add_run(f"[  INSERT FIGURE {n} - {title}  ]\n"
+                     f"(attach: assets/v2/{filename})")
+    run.font.size = Pt(10)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(0x1F, 0x4E, 0x79)
+    p_pr = ph._p.get_or_add_pPr()
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:val"), "clear")
+    shd.set(qn("w:fill"), "EAF1F8")
+    p_pr.append(shd)
+    para(doc, f"Figure {n}. {title}.", italic=True, size=9)
+
+
 def build_document() -> None:
     build_diagram()
     doc = Document()
@@ -227,6 +246,9 @@ def build_document() -> None:
         ("Business Name: ",
          "UnitedHealthcare (hypothetical care-management scenario)"),
         ("Publication Date: ", "14 September 2026"),
+        ("Version: ", "2.0 - 16 October 2026 (supersedes v1; as-implemented updates: "
+         "course-mandated 40/10/10/40 split, measured 85.3% eligibility, Feature Store + "
+         "Athena added, deployment/monitoring/CI-CD as-built notes, measured results)"),
     ])
     doc.add_heading("Team Workflows", level=2)
     bullets(doc, [
@@ -268,8 +290,10 @@ def build_document() -> None:
          "recall - with recall on the High-Risk class treated as the most consequential "
          "number (missing a High-Risk member is worse than over-flagging), multiclass "
          "ROC-AUC (one-vs-rest), and the confusion matrix to see which risk tiers are "
-         "confused. We use stratified train/validation/test splits and k-fold "
-         "cross-validation during tuning so all three classes are represented in every fold.")
+         "confused. As implemented: stratified course-mandated split with seeded grid runs "
+         "over the design hyperparameters (3 XGBoost configs + LogReg + RF, fixed seed 42), "
+         "champion selected on validation macro F1 under a High-Risk recall floor, confirmed "
+         "once on the untouched test set.")
     lead(doc, "What is your data source?",
          "The CMS Data Entrepreneurs' Synthetic Public Use File (DE-SynPUF), 2008-2010, "
          "converted to the OHDSI OMOP Common Data Model v5.x and hosted as a public dataset "
@@ -342,25 +366,27 @@ def build_document() -> None:
     # ---- 2. Solution Overview ---------------------------------------------- #
     doc.add_heading("2. Solution Overview", level=1)
     para(doc,
-         "The system is an AWS-native batch ML pipeline. Raw OMOP CDM tables are mirrored "
-         "from the public synpuf-omop bucket into a private project S3 bucket. A SageMaker "
-         "Processing job runs the validation gate (39 checks) and feature engineering to "
-         "produce a member-level table (one row per person, 24 columns). A temporal split "
-         "defines training data: features from the 2008 history window, rule-based risk "
-         "labels from the 2009-2010 outcome window. SageMaker Training jobs train and tune "
-         "Logistic Regression, Random Forest, and XGBoost; the best model by validation "
-         "macro F1 (subject to a High-Risk recall floor) is registered in the SageMaker "
-         "Model Registry and promoted through pipeline stages. Scoring runs as SageMaker "
-         "Batch Transform on a monthly cadence, writing Low/Medium/High risk assignments "
-         "that care-management teams consume as ranked worklists. Prior to release we test "
-         "data validation gates, training reproducibility, evaluation regression versus the "
-         "baseline, and bias metrics; in production we monitor data drift, prediction "
-         "distribution drift, pipeline health, and macro-F1 decay as outcome windows mature.")
-    doc.add_picture(str(DIAGRAM), width=Inches(6.9))
-    doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    para(doc, "Figure 1. System architecture: storage, preprocessing, feature engineering, "
-              "training, deployment, and monitoring components.",
-         italic=True, size=9, align=WD_ALIGN_PARAGRAPH.CENTER)
+         "The system is an AWS-native ML pipeline (as implemented, October 2026). Raw OMOP "
+         "CDM tables are mirrored from the public synpuf-omop bucket into the project's S3 "
+         "datalake prefix. The 39-check validation gate and feature engineering run as "
+         "deterministic, memory-safe scripts (src/load_synpuf.py, build_features.py, "
+         "build_training_data.py), validated locally before upload; a cloud-side SageMaker "
+         "Processing port is designed and documented but was deferred as a stretch goal. "
+         "Athena catalogs raw and processed data for SQL validation; the member-level table "
+         "(82,624 labeled members) is ingested into a SageMaker Feature Store feature "
+         "group whose offline store feeds dataset extraction. SageMaker Training jobs train "
+         "Logistic Regression, Random Forest, and XGBoost; the champion is registered in "
+         "the Model Registry behind a human approval gate. Two deployment paths serve "
+         "scoring: production cohorts run as SageMaker Batch Transform producing ranked "
+         "worklists; a zero-idle-cost SageMaker Serverless Inference endpoint powers an "
+         "operations console for live what-if predictions and the video demonstration. "
+         "Monitoring is implemented as a data-quality baseline job plus live-evaluation "
+         "model-quality and bias evidence reports in S3, with CloudWatch dashboards and "
+         "alarms for infrastructure health - the classic schedule-based monitor APIs having "
+         "been retired by AWS into maintenance mode during the project (see Model "
+         "Monitoring).")
+    figure_placeholder(doc, 1, "System architecture (as implemented)",
+                       "fig1_system_architecture.png")
 
     doc.add_heading("Data Sources", level=2)
     lead(doc, "What is your data source?",
@@ -395,13 +421,34 @@ def build_document() -> None:
 
     doc.add_heading("Data Engineering", level=2)
     lead(doc, "How will you store this data?",
-         "Three S3 prefixes in a private project bucket (e.g., aai-540-g1-final-project): "
-         "raw/ (mirrored public data, immutable), processed/ (member-level feature CSV + "
-         "intermediate aggregates), and artifacts/ (trained models, evaluation reports, "
-         "scoring outputs). SSE-S3 encryption, blocked public access, and least-privilege "
-         "IAM roles; the pipeline only reads from the public source bucket. Development "
-         "uses a git-tracked local mirror under data/ with data/ gitignored except the "
-         "committed feature-table artifact.")
+         "Three S3 prefixes - raw/ (mirrored public data, immutable), processed/ "
+         "(member-level training table + split CSVs), artifacts/ (trained models, evaluation "
+         "and monitoring reports, scoring outputs) - under the account's default SageMaker "
+         "bucket (sagemaker-us-east-1-<account>/aai-540-g1/). Design change from v1: a "
+         "dedicated project bucket was replaced by the default bucket + prefix to avoid "
+         "new-bucket IAM friction in a personal/Learner-Lab account; the prefix layout, "
+         "SSE-S3 encryption, blocked public access, and least-privilege access are "
+         "unchanged. Development uses a git-tracked local mirror under data/ with data/ "
+         "gitignored except the committed feature-table artifact.")
+    lead(doc, "How are features stored and served (Feature Store)?",
+         "The training table is ingested into a SageMaker Feature Store feature group "
+         "(aai-540-g1-member-features; record id person_id; event time at ingestion). "
+         "Bulk ingestion uses a client-side threaded put_record pool - the SDK's serial "
+         "ingest took >1 hour for 82,624 records and the assumed batch API does not exist "
+         "(both measured; notes in notebook 02). The online store serves point lookups "
+         "(get_record spot-checks return MATCH); the offline store lands in Glue/Athena, "
+         "where split-filtered queries materialize the train/validation/test/production "
+         "datasets - the Feature Store is therefore both the serving layer for the demo UI "
+         "and the extraction layer for training (course Update 3.1, steps 4-5).")
+    lead(doc, "How is the data cataloged and queried (Athena)?",
+         "An Athena workgroup (aai540_g1, SSE-S3 results in the project prefix) and "
+         "database host external tables over the raw and processed prefixes "
+         "(scripts/setup_athena.py). Validation queries - member counts, per-class "
+         "balances, age-band x class cross-tabs, chronic-flag prevalence by class (CHF "
+         "climbs 11.7% -> 28.2% -> 51.5% across Low/Medium/High) - are the SQL-level data "
+         "checks executed before any training (Update 3.1, step 2).")
+    figure_placeholder(doc, 2, "Data engineering and Athena cataloging",
+                       "fig2_data_lifecycle_athena.png")
     lead(doc, "What data pre-processing do you need to do before you feed it into your ML "
               "system?",
          "Schema normalization (lowercase headers; skip duplicated versioned files like "
@@ -415,14 +462,18 @@ def build_document() -> None:
 
     doc.add_heading("Training Data", level=2)
     lead(doc, "How will you split your data into training, test and validation?",
-         "Two layers. First, a temporal eligibility filter: only members observable in both "
-         "the 2008 history window and the 2009-2010 outcome window (83.3% of the "
-         "population; median coverage ~975 days) enter the labeled set. Second, a "
-         "stratified 70/15/15 train/validation/test split on the history-window features, "
-         "stratified by the constructed risk class so all three tiers are represented; "
-         "k-fold cross-validation on the training fold during hyperparameter tuning. "
-         "Members who die during the outcome window are censored and excluded from "
-         "evaluation, since their truncated utilization is not a fair 'Low' signal.")
+         "Two layers. First, a temporal eligibility filter: only members whose observation "
+         "period overlaps both the 2008 history window and the 2009-2010 outcome window "
+         "(start <= 2008-12-31 AND end >= 2009-01-01) enter the labeled set - 85,323 "
+         "members (85.3%; the v1 estimate of 83.3% was superseded by the measured figure). "
+         "Second, the course-mandated split from Team Update 3.1: stratified 40% train / "
+         "10% validation / 10% test / 40% production, per class, seed 42 (supersedes the "
+         "v1 70/15/15 design). The 40% production reserve is scored blind and doubles as "
+         "the 'production data' whose known labels feed the Module-5 model-quality monitor. "
+         "Members who die during the outcome window are censored (2,699 excluded), leaving "
+         "82,624 labeled members with zero null cells and 33/33/33 class balance.")
+    figure_placeholder(doc, 3, "Temporal windows, rule-based labels, and the 40/10/10/40 split",
+                       "fig3_temporal_split_labels.png")
     lead(doc, "Will you use any data labeling techniques?",
          "Yes - rule-based (heuristic) weak supervision. Claims data arrives with no risk "
          "labels, so we construct the Member_Utilization_Risk target from observed future "
@@ -467,12 +518,16 @@ def build_document() -> None:
 
     doc.add_heading("Model Training & Evaluation", level=2)
     lead(doc, "How will you train your model?",
-         "Via SageMaker Training jobs fed by the processed feature CSV in S3. A "
-         "hyperparameter-tuning job (grid/random search, 20-30 candidates, 5-fold CV on "
-         "the training fold) optimizes macro F1 for each algorithm; the champion is chosen "
-         "on the validation fold subject to a High-Risk recall floor, then confirmed once "
-         "on the untouched test set. Fixed random seeds and versioned data snapshots make "
-         "runs reproducible.")
+         "Via SageMaker Training jobs fed by the training table in S3 (single 'train' "
+         "channel; train.py derives the splits internally and early-stops XGBoost on the "
+         "validation slice). As implemented: five seeded runs over the design grid - "
+         "logreg-c1, rf-d16-l5, and three XGBoost configurations (eta 0.1/0.05, depth "
+         "6/8, min_child_weight 5/1) - tracked as Experiments, with the champion chosen on "
+         "validation macro F1 subject to the High-Risk recall floor. The full 20-30-"
+         "candidate HyperparameterTuner with k-fold CV remains the designed tuning "
+         "upgrade; a one-line container quirk worth recording: single-character "
+         "hyperparameter keys are rendered with one dash by the training container, so the "
+         "argument is named --c-reg rather than --C.")
     lead(doc, "What algorithm will you use?",
          "Three native multiclass candidates: (1) multinomial Logistic Regression "
          "(interpretable baseline); (2) Random Forest (nonlinear interactions, robust to "
@@ -490,9 +545,13 @@ def build_document() -> None:
          "Primary macro F1 on the held-out test set; per-class precision/recall with "
          "High-Risk recall reported as the headline business metric; confusion matrix to "
          "inspect Low/Medium/High confusions (Medium-High boundary errors matter most); "
-         "multiclass ROC-AUC (one-vs-rest). We also audit fairness slices (per gender, "
-         "race, age band) and record feature importance/SHAP for the champion to satisfy "
-         "the interpretability goal.")
+         "multiclass ROC-AUC (one-vs-rest). Measured results are summarized in the Results "
+         "section; fairness slices (per gender, race, age band) and booster feature "
+         "importance for the champion are computed in notebook 04 - history-window "
+         "utilization and chronic flags dominate, with no leakage columns among the top "
+         "features.")
+    figure_placeholder(doc, 4, "Training, evaluation, and champion selection (measured)",
+                       "fig4_training_evaluation.png")
 
     doc.add_heading("Model Deployment", level=2)
     lead(doc, "What instance size will you use?",
@@ -506,18 +565,33 @@ def build_document() -> None:
          "weekly/monthly refresh cycle - there is no user-facing latency requirement, "
          "input is the full member population at once, and batch scoring (SageMaker Batch "
          "Transform) is simpler, cheaper, and easier to monitor than an always-on endpoint. "
-         "A small real-time endpoint would only be justified for ad-hoc what-if lookups by "
-         "care managers, which is out of scope for the initial release.")
+         "As implemented, a real-time path was ADDED for ad-hoc what-if lookups and the "
+         "course demonstration: a SageMaker Serverless Inference endpoint (2048 MB, max "
+         "concurrency 10) fronted by an S3-hosted operations console, API Gateway HTTP API, "
+         "and a Lambda proxy. Rationale: it scales to zero, so the always-in-AWS demo costs "
+         "~$0 at rest and <$1 on recording day; the accepted trade-offs are 5-8 s cold "
+         "starts (absorbed by a retry in the Lambda) and the absence of data capture on "
+         "the serverless tier.")
+    figure_placeholder(doc, 5, "Deployment paths: batch production scorer + serverless demo endpoint",
+                       "fig5_deployment_paths.png")
 
     doc.add_heading("Model Monitoring", level=2)
-    lead(doc, "How will you monitor your model?",
-         "Two horizons. (1) Immediate: prediction-drift tracking - the distribution of "
-         "predicted Low/Medium/High shares per scoring run against a baseline (PSI-style "
-         "alerts), score-distribution statistics, and feature-attribution drift for the "
-         "champion model. (2) Delayed: once outcome windows mature, recompute ground-truth "
-         "labels and track macro F1, per-class recall (especially High-Risk), and the "
-         "confusion matrix over time; alert on decay beyond a threshold to trigger "
-         "retraining. All metrics land in CloudWatch with dashboards and alarms.")
+    lead(doc, "How will you monitor your model? (as implemented)",
+         "Two horizons, delivered as explicit evidence jobs rather than scheduled monitors "
+         "for a blocking reason discovered mid-project: AWS retired the classic monitoring "
+         "schedule APIs (CreateDataQualityJobDefinition, CreateModelQualityJobDefinition) "
+         "into MAINTENANCE MODE - unavailable to new customers - so recurring Clarify "
+         "schedules cannot be created on a fresh account. (1) Immediate: a "
+         "DefaultModelMonitor baseline job profiles the training distribution "
+         "(statistics.json + constraints.json in S3); the champion is live-evaluated "
+         "against 400 held-out members through the endpoint (model_quality_report.html/.json "
+         "- macro F1, per-class metrics, confusion matrix); a one-off Clarify bias report "
+         "was attempted with the fallback documented. (2) Delayed: the 40% production "
+         "reserve has known labels, so macro-F1/per-class-recall decay tracking is a "
+         "recomputation job, ready to schedule the moment AWS re-opens the APIs. "
+         "Prediction-drift PSI schedules remain designed-future.")
+    figure_placeholder(doc, 6, "Monitoring architecture (as implemented, with maintenance-mode finding)",
+                       "fig6_monitoring_architecture.png")
     lead(doc, "How will you monitor your infrastructure?",
          "CloudWatch alarms on SageMaker job failures, processing/training/batch-transform "
          "duration and throughput anomalies, instance utilization, S3 bucket metrics, and "
@@ -533,14 +607,21 @@ def build_document() -> None:
          "recorded with each scored cohort.")
 
     doc.add_heading("Model CI/CD", level=2)
-    lead(doc, "What checkpoints will your CI/CD pipeline contain?",
-         "SageMaker Pipelines with human approval steps: (1) data validation gate must "
-         "pass; (2) unit/lint checks; (3) training job completes within budget; (4) "
-         "evaluation gate - test macro F1 >= registered champion AND High-Risk recall >= "
-         "floor, plus bias-audit sign-off; (5) model registered with metrics + lineage in "
-         "the Model Registry; (6) staging batch transform on a holdout cohort, manually "
-         "reviewed; (7) production promotion, with one-command rollback to the previous "
-         "registered version.")
+    lead(doc, "What checkpoints will your CI/CD pipeline contain? (as implemented)",
+         "Implemented scope (src/pipeline.py): a SageMaker Pipeline (aai-540-g1-"
+         "utilization-risk) with two steps - TrainingStep running train.py with the "
+         "champion configuration, then RegisterModel into the member-utilization-risk "
+         "group with ModelApprovalStatus=PendingManualApproval. The human approval gate is "
+         "the registry status flip; rollback is repointing the batch transform at the "
+         "previous package version. Both execution states were demonstrated and recorded: "
+         "demo-pipeline-ok Succeeded (green DAG) and demo-pipeline-fail Failed (red DAG, "
+         "invalid eta argument aborts the train step before anything downstream runs). "
+         "Designed-but-not-yet-wired: the automated evaluation gate (ConditionStep: test "
+         "macro F1 >= champion AND High-Risk recall >= floor), unit/lint checks, staging "
+         "batch review, and SNS notifications - evaluation currently runs in notebook 04 "
+         "and is the first CI/CD hardening task on the roadmap.")
+    figure_placeholder(doc, 7, "CI/CD pipeline: DAG, human approval gate, and both execution states",
+                       "fig7_cicd_pipeline.png")
     lead(doc, "What tests will your CI/CD pipeline contain?",
          "Data tests (schema, null rates, distribution drift, window-coverage checks); "
          "code tests (feature-builder unit tests with hand-computed expectations on fixed "
@@ -549,6 +630,29 @@ def build_document() -> None:
          "more than tolerance; sanity - predicted class distribution within expected "
          "bounds; fairness - per-slice recall gaps under threshold); and integration tests "
          "(end-to-end batch scoring smoke test on a 1k sample with output schema checks).")
+
+    doc.add_heading("Results (measured, October 2026)", level=2)
+    bullets(doc, [
+        "Benchmarks (Team Update 4.1 step 1): majority-class macro F1 0.168; simple "
+        "visits-tercile heuristic macro F1 0.530 with High-Risk recall 0.640.",
+        "Champion: xgb-e005-d6-w5 (XGBoost 1.7-1, eta 0.05, depth 6, min_child_weight 5) - "
+        "held-out test macro F1 0.7743, High-Risk recall 0.8468, multiclass ROC-AUC 0.916; "
+        "LogReg 0.763 / RF ~0.75 also clear both benchmarks.",
+        "Batch scoring (production path): 33,048 reserved production members scored via "
+        "Batch Transform; output distribution Low 33.3% / Medium 34.5% / High 32.2%; "
+        "ranked High-Risk worklist published to S3.",
+        "Feature Store: 82,624 records ingested (0 failures); online lookups and offline "
+        "Athena extraction verified.",
+        "Monitoring: data-quality baseline job completed (statistics + constraints); "
+        "live-evaluation model-quality report published (macro F1 0.774 on 400 endpoint "
+        "scored members); CloudWatch dashboard + 2 infra alarms; maintenance-mode "
+        "constraint documented.",
+        "Demo: serverless endpoint + operations console end-to-end; CI/CD DAGs recorded in "
+        "both success and failure states; total project AWS spend for the build+demo "
+        "window under $25 (personal account, shared with unrelated workloads).",
+        "Standing caveat: all findings are methodological exercises on synthetic data - "
+        "they do not transfer to real Medicare beneficiaries.",
+    ])
 
     # ---- 3. Security & Risks ----------------------------------------------- #
     doc.add_heading("3. Security Checklist, Privacy and Other Risks", level=1)
